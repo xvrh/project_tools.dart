@@ -143,7 +143,7 @@ class _Directory {
 
   bool _ignores(String path) {
     var ignored = false;
-    var relativePath = p.relative(path, from: directory.path);
+    var relativePath = p.relative(path, from: directory.path).replaceAll(r'\', '/');
     if (_ignore != null) {
       ignored |= _ignore!.ignores(relativePath);
     }

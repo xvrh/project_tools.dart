@@ -16,7 +16,7 @@ void main() {
       ])
     ]).create();
 
-    var files = listFiles(Directory('${d.sandbox}/parent/repo')).toList();
+    var files = listFiles(Directory(p.join(d.sandbox, 'parent','repo'))).toList();
     expect(
         files.map((f) => f.path),
         unorderedEquals([
@@ -93,7 +93,7 @@ void main() {
       ])
     ]).create();
 
-    var files = listPaths(Directory('${d.sandbox}/parent/repo'));
+    var files = listPaths(Directory(p.join(d.sandbox, 'parent', 'repo')));
     expect(
         files,
         unorderedEquals([
