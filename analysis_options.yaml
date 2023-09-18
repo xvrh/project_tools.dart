@@ -16,7 +16,6 @@ linter:
     no_default_cases: true
     omit_local_variable_types: true
     only_throw_errors: true
-    prefer_relative_imports: true
     prefer_single_quotes: true
     sort_pub_dependencies: true
     test_types_in_equals: true
