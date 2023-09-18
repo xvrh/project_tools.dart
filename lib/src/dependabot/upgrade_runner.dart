@@ -1,26 +1,24 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:collection/collection.dart';
-import 'package:markdown/markdown.dart';
-import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 import 'package:process_runner/process_runner.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:yaml/yaml.dart';
 import '../dart_project.dart';
-import 'changelog.dart';
 
 class UpgradeRunner {
   final String dartOrFlutterBinary;
 
   UpgradeRunner({required this.dartOrFlutterBinary});
 
-  Future<RepositoryUpgrade> upgradeProjects(List<DartProject> projects) async {
+  Future<List<ProjectUpgrade>> upgradeProjects(
+      List<DartProject> projects) async {
     var upgrades = <ProjectUpgrade>[];
     for (var project in projects) {
       upgrades.add(await upgrade(project));
     }
-    return RepositoryUpgrade(upgrades);
+    return upgrades;
   }
 
   Future<ProjectUpgrade> upgrade(DartProject project) async {
@@ -114,134 +112,6 @@ class UpgradeRunner {
   }
 }
 
-class RepositoryUpgrade {
-  final List<ProjectUpgrade> projects;
-
-  RepositoryUpgrade(this.projects);
-
-  String get summary {
-    var allUpgrades = projects.expand((p) => p.pubUpgrades);
-    var breakingCount = allUpgrades.where((u) => u.isBreaking).length;
-    var projectsCount = projects.where((p) => p.pubUpgrades.isNotEmpty).length;
-    return '$projectsCount project${projectsCount > 1 ? 's' : ''}, '
-        '${allUpgrades.length} upgrades '
-        '($breakingCount breaking${breakingCount > 1 ? 's' : ''})';
-  }
-
-  Future<String> describe({List<String>? highlightPackages}) async {
-    var highlightPackagesNullSafe = highlightPackages ?? [];
-
-    var buffer = StringBuffer();
-
-    var sortedProjects = projects.toList();
-    mergeSort<ProjectUpgrade>(sortedProjects, compare: (a, b) {
-      int weight(ProjectUpgrade p) {
-        var index = highlightPackagesNullSafe.indexOf(p.project.packageName);
-        if (index == -1) {
-          return highlightPackagesNullSafe.length;
-        }
-        return index;
-      }
-
-      return weight(a).compareTo(weight(b));
-    });
-
-    for (var project in sortedProjects) {
-      if (!project.hasChanged) continue;
-
-      var breakings = project.pubUpgrades.where((e) => e.isBreaking).length;
-      var count = project.pubUpgrades.length;
-
-      buffer.writeln('### ${project.project.packageName}');
-
-      if (project.pubUpgrades.isNotEmpty) {
-        buffer.writeln('<details>');
-        buffer.writeln(
-            '<summary>($count upgrade${count > 1 ? 's' : ''}, $breakings breaking${breakings > 1 ? 's' : ''})</summary>');
-        buffer.writeln('');
-        buffer.writeln('''
-Package | Type | Version | Changelog${' &nbsp;' * 30}
----|--- | --- | ---''');
-        for (var upgrade in project.pubUpgrades) {
-          String title;
-          if (upgrade.isHosted) {
-            title =
-                '[${upgrade.package}](https://pub.dev/packages/${upgrade.package})';
-          } else {
-            title = upgrade.package;
-          }
-          var type = upgrade.type.name.toUpperCase();
-          if (upgrade.isBreaking) {
-            type = '**$type**';
-          }
-          var changelogColumn = '';
-          if (upgrade.isHosted) {
-            var htmlChangeLog = '';
-            var changelog = await upgrade.readChangelog();
-
-            if (changelog != null) {
-              htmlChangeLog = markdownToHtml(changelog);
-            }
-
-            var versionHash = '${upgrade.to}'
-                .replaceAll(RegExp(r'[^0-9a-z]', caseSensitive: false), '');
-            changelogColumn = '<details>'
-                '<summary>[Changelog](https://pub.dev/packages/${upgrade.package}/changelog#$versionHash)</summary>'
-                '$htmlChangeLog'
-                '</details>';
-
-            changelogColumn =
-                changelogColumn.replaceAll('\n', '').replaceAll('\r', '');
-          }
-
-          buffer.writeln(
-              '$title | $type | ${upgrade.from ?? ''} → ${upgrade.to} | $changelogColumn');
-        }
-        buffer.writeln('</details>\n');
-        buffer.writeln('');
-      }
-
-      if (project.outdated.isNotEmpty) {
-        buffer.writeln('<details>');
-        buffer
-            .writeln('<summary>Outdated: ${project.outdated.length}</summary>');
-        buffer.writeln('');
-        buffer.writeln('''
-Package | Current | Resolvable | Latest
----|--- | --- | ---''');
-        for (var package in project.outdated) {
-          var title =
-              '[${package.package}](https://pub.dev/packages/${package.package})';
-
-          String versionOrEmpty(Version? v) => v == null ? '' : '$v';
-
-          buffer.writeln('$title | '
-              '${versionOrEmpty(package.current)} | '
-              '${versionOrEmpty(package.resolvable)} | '
-              '${versionOrEmpty(package.latest)}');
-        }
-        buffer.writeln('</details>');
-      }
-
-      for (var podUpdate in project.podUpdates) {
-        buffer.writeln('''
-<details>
-<summary>${podUpdate.name} Pod update</summary>
-
-```
-${podUpdate.diff}
-```
-
-</details>        
-''');
-      }
-      buffer.writeln('');
-    }
-
-    return '$buffer';
-  }
-}
-
 class ProjectUpgrade {
   final DartProject project;
   late List<PubUpgrade> _pubUpgrades;
@@ -283,10 +153,6 @@ UpgradeType upgradeType(Version? from, Version to) {
   return UpgradeType.patch;
 }
 
-extension on UpgradeType {
-  String get name => toString().split('.').last;
-}
-
 class PubUpgrade {
   final DartProject project;
   final String package;
@@ -306,20 +172,6 @@ class PubUpgrade {
   UpgradeType get type => _type;
 
   bool get isBreaking => _type == UpgradeType.breaking;
-
-  Future<String?> readChangelog() async {
-    var packageConfig = (await findPackageConfig(project.directory))!;
-    var packageInfo = packageConfig[package]!;
-    var filesInPackage = Directory.fromUri(packageInfo.root).listSync();
-    var changelog = filesInPackage.whereType<File>().firstWhereOrNull(
-        (e) => p.basename(e.path).toUpperCase().startsWith('CHANGELOG.'));
-    if (changelog != null) {
-      var fullContent = await changelog.readAsString();
-      return extractChangelog(fullContent, from, to);
-    } else {
-      return null;
-    }
-  }
 
   @override
   String toString() => 'PackageUpgrade($package, from: $from, to: $to)';

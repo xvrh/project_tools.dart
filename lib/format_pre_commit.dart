@@ -5,9 +5,13 @@ import 'package:collection/collection.dart';
 import 'package:path/path.dart' as path;
 import 'package:project_tools/src/dart_project.dart';
 
+import 'format.dart';
+import 'src/git_root.dart';
+
 /// Format the changed file in git.
 /// This script should be configured as a pre-commit git hook (see CONTRIBUTING.md)
-Future<void> formatModifiedGitFiles(Directory gitRoot) async {
+Future<List<ProjectFile>> formatModifiedGitFiles() async {
+  var gitRoot = findGitRootOrThrow();
   var projects = DartProject.find(gitRoot);
   projects.sort((p1, p2) => p2.path.length.compareTo(p1.path.length));
   var changedDartFiles = <String, ProjectFile>{};
@@ -16,40 +20,33 @@ Future<void> formatModifiedGitFiles(Directory gitRoot) async {
   for (var line in LineSplitter.split(result.stdout.toString())) {
     var split = line.split('\t');
     var operation = split[0];
-    var changedPath = path.join(repositoryRoot, split.last);
+    var changedPath = path.join(gitRoot.path, split.last);
 
     if (changedPath.endsWith('.dart') && operation != 'D') {
-      var project = projects.firstWhereOrNull(
-          (DartProject project) => path.isWithin(project.path, changedPath));
-      if (project != null) {
-        var file = ProjectFile(
-            project, FilePath(File(changedPath), root: project.directory));
+      var file = projects.findFile(changedPath);
+      if (file != null) {
         changedDartFiles[changedPath] = file;
       }
     }
   }
 
-  print('Files to check: ${changedDartFiles.length}');
-
-  var dartFileToReadToIndex = <ProjectFile>{};
+  var modifiedFiles = <ProjectFile>[];
 
   for (var file in changedDartFiles.values) {
-    var modified = fixFile(file);
+    var modified = formatFile(file);
     if (modified) {
-      dartFileToReadToIndex.add(file);
+      modifiedFiles.add(file);
     }
   }
 
-  if (dartFileToReadToIndex.isNotEmpty) {
+  if (modifiedFiles.isNotEmpty) {
     // Leave some to time to the file system.
     await Future.delayed(const Duration(seconds: 1));
   }
 
-  print(
-      'prepare_submit git hook modified ${dartFileToReadToIndex.length} file(s) before commit');
-  for (var file in dartFileToReadToIndex) {
+  for (var file in modifiedFiles) {
     var rootRelative = path.join(file.project.path, file.relativePath);
-    print('prepare_submit: $rootRelative');
     Process.runSync('git', ['add', rootRelative]);
   }
+  return modifiedFiles;
 }

@@ -1,83 +1,72 @@
 import 'dart:io';
+import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
-import '../repository_root.dart';
-import 'pubspec_finder.dart';
+import 'git_root.dart';
+import 'list_files.dart' as list_files;
 
-List<DartProject> getDartProjects(String root) {
-  var paths = <DartProject>[];
+export 'list_files.dart' show FilePath;
 
-  for (var file in findPubspecs(Directory(root))) {
-    var relativePath = p.relative(file.path, from: root);
-    if (p
-        .split(relativePath)
-        .any((part) => part.startsWith('_') || part.startsWith('.'))) {
-      continue;
+class _ProjectLocation {
+  final Directory gitRoot;
+  final Directory root;
+  final Directory directory;
+
+  _ProjectLocation(this.root, this.gitRoot, this.directory);
+
+  String get path => directory.path;
+
+  String get relativePath {
+    var path = p.normalize(p.relative(directory.path, from: root.path));
+    if (path == '.') {
+      path = '';
     }
-
-    paths.add(DartProject(p.normalize(file.parent.absolute.path)));
-  }
-
-  return paths;
-}
-
-DartProject? getContainingProject(String currentPath) {
-  Directory dir;
-  if (FileSystemEntity.typeSync(currentPath) == FileSystemEntityType.file) {
-    dir = File(currentPath).parent;
-  } else {
-    dir = Directory(currentPath);
-  }
-
-  while (true) {
-    if (dir.listSync(followLinks: false).any((r) =>
-        r is File && p.basename(r.path).toLowerCase() == 'pubspec.yaml')) {
-      return DartProject(dir.path);
-    }
-    var parent = dir.parent;
-    if (dir.path == parent.path) {
-      return null;
-    }
-
-    dir = parent;
-  }
-}
-
-/// Retourne les sous-projets ou le projet qui contient le dossier cible.
-List<DartProject> getSubOrContainingProjects(String root) {
-  var projects = getDartProjects(root);
-  if (projects.isEmpty) {
-    var containingProject = getContainingProject(root);
-    return [if (containingProject != null) containingProject];
-  } else {
-    return projects;
+    return path;
   }
 }
 
 class DartProject {
-  final Directory directory;
+  final _ProjectLocation _location;
   final YamlMap pubspec;
 
-  DartProject(String path)
-      : directory = Directory(path).absolute,
-        pubspec = _loadPubspec(path);
+  DartProject._(this._location) : pubspec = _loadPubspec(_location.path);
 
-  static DartProject fromRoot(String path) =>
-      DartProject(p.join(repositoryRoot, path));
+  factory DartProject(Directory directory, {Directory? gitRoot}) {
+    return DartProject._(
+        _ProjectLocation(directory, gitRoot ?? directory, directory));
+  }
+
+  static List<DartProject> find(Directory root, {Directory? gitRoot}) {
+    var paths = <DartProject>[];
+
+    for (var file in list_files.findFilesByName(root, 'pubspec.yaml')) {
+      var directory = file.parent;
+      paths.add(DartProject._(_ProjectLocation(
+          root, gitRoot ?? findGitRoot(root) ?? root, directory)));
+    }
+
+    return paths;
+  }
 
   String get packageName => pubspec['name'] as String;
 
   bool get useFlutter {
     var environment = pubspec['environment'] as YamlMap?;
-    if (environment != null) {
-      return environment.containsKey('flutter');
+    if (environment != null && environment.containsKey('flutter')) {
+      return true;
+    }
+    var dependencies = pubspec['dependencies'] as YamlMap?;
+    if (dependencies != null && dependencies.containsKey('flutter')) {
+      return true;
     }
     return false;
   }
 
-  String get path => directory.path;
+  Directory get directory => _location.directory;
 
-  String get relativePath => p.relative(path, from: repositoryRoot);
+  String get path => _location.path;
+
+  String get relativePath => _location.relativePath;
 
   static YamlMap _loadPubspec(String projectRoot) {
     var pubspecContent =
@@ -85,54 +74,65 @@ class DartProject {
     return loadYaml(pubspecContent) as YamlMap;
   }
 
-  List<DartFile> getDartFiles() {
-    var files = <DartFile>[];
-    _visitDirectory(Directory(path), files, isRoot: true);
-    return files;
+  List<ProjectFile> listFiles({Directory? gitRoot}) {
+    gitRoot ??= _location.gitRoot;
+
+    return list_files
+        .listFiles(directory, gitRoot: gitRoot, shouldEnterDirectory: (dir) {
+          var hasPubspec =
+              dir.contents.any((e) => e.path.endsWith('pubspec.yaml'));
+          return !hasPubspec;
+        })
+        .map((f) => ProjectFile(this, f))
+        .toList();
   }
 
-  void _visitDirectory(Directory directory, List<DartFile> files,
-      {bool isRoot = true}) {
-    var directoryContent = directory.listSync();
-
-    // On ne visite pas les sous dossiers qui contiennent un autre package
-    if (!isRoot &&
-        directoryContent
-            .any((f) => f is File && f.path.endsWith('pubspec.yaml'))) return;
-
-    for (var entity in directoryContent) {
-      if (entity is File && entity.path.endsWith('.dart')) {
-        var absoluteFile = entity.absolute;
-
-        files.add(DartFile(this, absoluteFile));
-      } else if (entity is Directory) {
-        var dirName = p.basename(entity.path);
-        if (!const ['android', 'ios', 'Pods', 'build', 'cdk.out']
-                .contains(dirName) &&
-            !dirName.startsWith('_') &&
-            !dirName.startsWith('.')) {
-          _visitDirectory(entity, files, isRoot: false);
-        }
-      }
-    }
+  List<ProjectFile> get dartFiles {
+    return listFiles().where((f) => f.filePath.path.endsWith('.dart')).toList();
   }
 
   @override
   String toString() => 'DartProject(name: $packageName, path: $path)';
 }
 
-class DartFile {
+class ProjectFile {
   final DartProject project;
-  final File file;
-  final String relativePath;
+  final list_files.FilePath filePath;
 
-  DartFile(this.project, this.file)
-      : relativePath = p.relative(file.absolute.path, from: project.path);
+  ProjectFile(this.project, this.filePath);
+
+  String get relativePath => filePath.relativePath;
+  String get normalizedRelativePath => filePath.normalizedRelativePath;
+
+  File get file => filePath.file;
 
   String get path => file.path;
 
-  String get normalizedRelativePath => relativePath.replaceAll(r'\', '/');
-
   @override
   String toString() => 'DartFile($file)';
+}
+
+extension DartProjectListExtension on List<DartProject> {
+  ProjectFile? findFile(String path) {
+    var project = sortedBy<num>((e) => e.relativePath.length)
+        .reversed
+        .firstWhereOrNull((project) {
+      var pathToCompare = project.relativePath;
+      if (p.isAbsolute(path)) {
+        pathToCompare = project.path;
+      }
+      return p.isWithin(pathToCompare, path);
+    });
+
+    if (project != null) {
+      var relativePath = p.relative(path, from: project.relativePath);
+      var file = ProjectFile(
+          project,
+          list_files.FilePath(File(path),
+              root: project.directory,
+              splitRelativePath: p.split(relativePath)));
+      return file;
+    }
+    return null;
+  }
 }

@@ -1,0 +1,29 @@
+name: project_tools
+description: A few utilities for Dart projects.
+version: 1.0.0
+repository: https://github.com/xvrh/project_tools.dart
+publish_to: 'none'
+
+environment:
+  sdk: ^3.1.0
+
+dependencies:
+  analyzer:
+  collection:
+  dart_style:
+  github:
+  html:
+  http:
+  intl:
+  logging:
+  markdown:
+  package_config:
+  path:
+  process_runner:
+  pub_semver:
+  yaml:
+
+dev_dependencies:
+  lints:
+  test:
+  test_descriptor:

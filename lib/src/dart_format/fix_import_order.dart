@@ -1,74 +1,52 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:dart_style/dart_style.dart';
-import '../dart_project.dart';
 
-bool fixFile(ProjectFile dartFile, {bool dryRun = false}) {
-  var content = dartFile.file.readAsStringSync();
-
-  var newContent = reorderImports(content);
-
-  if (content != newContent) {
-    if (!dryRun) {
-      dartFile.file.writeAsStringSync(newContent, flush: true);
-    }
-    return true;
-  }
-  return false;
+String sortImports(String source) {
+  return _sortImports(source, parseString(content: source).unit);
 }
 
-final DartFormatter _dartFormatter = DartFormatter(fixes: StyleFix.all);
-
-final String newLineChar = Platform.isWindows ? '\r\n' : '\n';
-
-String reorderImports(String source) {
-  return _reorderImports(source, parseString(content: source).unit);
-}
-
-String _reorderImports(String content, CompilationUnit unit) {
-  var wholeDirectives = <_WholeDirective>[];
-  var imports = <ImportDirective>[];
-  var exports = <ExportDirective>[];
-  var parts = <PartDirective>[];
+String _sortImports(String content, CompilationUnit unit) {
+  var imports = <_Directive>[];
+  var exports = <_Directive>[];
+  var parts = <_Directive>[];
 
   var minOffset = 0, maxOffset = 0;
   var lastOffset = 0;
   var isFirst = true;
-  for (var directive in unit.directives) {
-    if (directive is UriBasedDirective) {
-      int offset, length;
-      if (isFirst) {
-        isFirst = false;
+  for (var directive in unit.directives.whereType<UriBasedDirective>()) {
+    int offset, length;
+    if (isFirst) {
+      isFirst = false;
 
-        var token = directive.metadata.beginToken ??
-            directive.firstTokenAfterCommentAndMetadata;
-
-        offset = token.offset;
-        length =
-            (directive.endToken.offset + directive.endToken.length) - offset;
-        minOffset = offset;
-        maxOffset = length + offset;
+      if (_hasPrecedingNewLine(
+          content, directive.firstTokenAfterCommentAndMetadata.offset - 1)) {
+        offset = directive.firstTokenAfterCommentAndMetadata.offset;
       } else {
-        offset = lastOffset;
-        length =
-            directive.endToken.offset + directive.endToken.length - lastOffset;
+        offset = (directive.metadata.beginToken ?? directive.beginToken)
+                .precedingComments
+                ?.offset ??
+            directive.beginToken.offset;
       }
+      length = (directive.endToken.offset + directive.endToken.length) - offset;
+      minOffset = offset;
+    } else {
+      offset = lastOffset;
+      length =
+          directive.endToken.offset + directive.endToken.length - lastOffset;
+    }
 
-      maxOffset = offset + length;
-      lastOffset = maxOffset;
+    maxOffset = offset + length;
+    lastOffset = maxOffset;
 
-      var wholeDirective = _WholeDirective(directive, offset, length);
-      wholeDirectives.add(wholeDirective);
+    var wholeDirective = _Directive(
+        directive, content.substring(offset, offset + length).trim());
 
-      if (directive is ImportDirective) {
-        imports.add(directive);
-      } else if (directive is ExportDirective) {
-        exports.add(directive);
-      } else {
-        parts.add(directive as PartDirective);
-      }
+    if (directive is ImportDirective) {
+      imports.add(wholeDirective);
+    } else if (directive is ExportDirective) {
+      exports.add(wholeDirective);
+    } else {
+      parts.add(wholeDirective);
     }
   }
 
@@ -77,55 +55,53 @@ String _reorderImports(String content, CompilationUnit unit) {
   parts.sort(_compare);
 
   var contentBefore = content.substring(0, minOffset);
-  var reorderedContent = '';
+  var reorderedContent = StringBuffer();
 
-  String writeBlock(List<UriBasedDirective> directives) {
-    var result = '';
-    for (var directive in directives) {
-      var wholeDirective = wholeDirectives.firstWhere(
-          (wholeDirective) => wholeDirective.directive == directive);
-      var directiveString = content.substring(wholeDirective.countedOffset,
-          wholeDirective.countedOffset + wholeDirective.countedLength);
-
-      var normalizedDirective = directive.toString().replaceAll('"', "'");
-      directiveString =
-          directiveString.replaceAll(directive.toString(), normalizedDirective);
-
-      result += directiveString;
+  var needPrecedingNewLine = false;
+  void writeBlock(List<_Directive> directives) {
+    if (needPrecedingNewLine && directives.isNotEmpty) {
+      reorderedContent
+        ..writeln()
+        ..writeln();
     }
-    return '$result$newLineChar$newLineChar';
+    reorderedContent.write(directives.map((d) => d.content).join('\n'));
+    if (directives.isNotEmpty) {
+      needPrecedingNewLine = true;
+    }
   }
 
-  reorderedContent += _removeBlankLines(writeBlock(imports));
-  reorderedContent += _removeBlankLines(writeBlock(exports));
-  reorderedContent += _removeBlankLines(writeBlock(parts));
+  writeBlock(imports);
+  writeBlock(exports);
+  writeBlock(parts);
 
   var contentAfter = content.substring(maxOffset);
 
-  var newContent = contentBefore + reorderedContent + contentAfter;
-
-  newContent = _dartFormatter.format(newContent);
+  var newContent = contentBefore + reorderedContent.toString() + contentAfter;
 
   return newContent;
 }
 
-String _removeBlankLines(String content) {
-  var lines = LineSplitter.split(content).toList();
-  var result = <String>[];
-  var i = 0;
-  for (var line in lines) {
-    if (i == 0 || line.trim().isNotEmpty) {
-      result.add(line);
-    }
-    ++i;
-  }
+bool _hasPrecedingNewLine(String content, int offset) {
+  var newLineCount = 0;
+  while (offset >= 0) {
+    var char = content[offset];
+    if (char == '\n') {
+      ++newLineCount;
 
-  return newLineChar + result.join(newLineChar);
+      if (newLineCount > 1) {
+        return true;
+      }
+    } else if (char != ' ' && char != '\r') {
+      return false;
+    }
+    --offset;
+  }
+  return true;
 }
 
-int _compare(UriBasedDirective directive1, UriBasedDirective directive2) {
-  var uri1 = directive1.uri.stringValue!;
-  var uri2 = directive2.uri.stringValue!;
+int _compare(_Directive directive1, _Directive directive2) {
+  var uri1 = directive1.directive.uri.stringValue!;
+  var uri2 = directive2.directive.uri.stringValue!;
 
   if (uri1.contains(':') && !uri2.contains(':')) {
     return -1;
@@ -136,10 +112,9 @@ int _compare(UriBasedDirective directive1, UriBasedDirective directive2) {
   }
 }
 
-class _WholeDirective {
+class _Directive {
   final UriBasedDirective directive;
-  final int countedOffset;
-  final int countedLength;
+  final String content;
 
-  _WholeDirective(this.directive, this.countedOffset, this.countedLength);
+  _Directive(this.directive, this.content);
 }
