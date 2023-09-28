@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as path;
+import 'dart_project.dart';
 import 'format.dart';
-import 'src/dart_project.dart';
-import 'src/git_root.dart';
+import 'git_root.dart';
 
 /// Format the changed file in git.
 /// This script should be configured as a pre-commit git hook (see CONTRIBUTING.md)
