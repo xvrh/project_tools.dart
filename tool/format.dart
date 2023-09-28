@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:project_tools/format.dart';
+import 'package:project_tools/project_tools.dart';
 
 void main() {
   for (var project in DartProject.find(Directory.current)) {

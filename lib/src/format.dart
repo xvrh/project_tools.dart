@@ -1,9 +1,9 @@
 import 'package:dart_style/dart_style.dart';
-import 'src/dart_format/fix_absolute_imports.dart';
-import 'src/dart_format/fix_import_order.dart';
-import 'src/dart_project.dart';
+import 'dart_format/fix_absolute_imports.dart';
+import 'dart_format/fix_import_order.dart';
+import 'dart_project.dart';
 
-export 'src/dart_project.dart' show DartProject;
+export 'dart_project.dart' show DartProject;
 
 Iterable<ProjectFile> formatProject(DartProject project) sync* {
   for (var file in project.dartFiles) {

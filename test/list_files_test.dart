@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:project_tools/src/list_files.dart';
+import 'package:project_tools/project_tools.dart';
 import 'package:test/test.dart';
 import 'package:test_descriptor/test_descriptor.dart' as d;
 
