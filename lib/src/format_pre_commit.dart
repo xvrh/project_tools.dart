@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as path;
-import 'format.dart';
 import 'dart_project.dart';
+import 'format.dart';
 import 'git_root.dart';
 
 /// Format the changed file in git.
