@@ -22,6 +22,7 @@ dependencies:
   process_runner:
   pub_semver:
   yaml:
+  yaml_edit:
 
 dev_dependencies:
   lints:
