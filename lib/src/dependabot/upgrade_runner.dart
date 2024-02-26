@@ -87,9 +87,7 @@ class UpgradeRunner {
   Future<List<PodUpdate>> podUpdate(DartProject project) async {
     var results = <PodUpdate>[];
 
-    //TODO(xha): renable macOS upgrade, but currently it doesn't work because it
-    // requires an initial build before that
-    for (var dir in ['iOS' /*, 'macOS'*/]) {
+    for (var dir in ['iOS', 'macOS']) {
       var iosDir = p.join(project.path, dir.toLowerCase());
       var process = ProcessRunner(
           defaultWorkingDirectory: Directory(iosDir), printOutputDefault: true);

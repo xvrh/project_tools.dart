@@ -2,6 +2,16 @@ import 'package:project_tools/src/dart_format/fix_import_order.dart';
 import 'package:test/test.dart';
 
 void main() {
+  String toWindowsLineSeparator(String input) =>
+      input.replaceAll('\n\r', '\n').replaceAll('\n', '\n\r');
+
+  void checkSortImports(String before, String after) {
+    expect(sortImports(before), after);
+    expect(toWindowsLineSeparator(sortImports(toWindowsLineSeparator(before))),
+        toWindowsLineSeparator(after),
+        reason: 'Windows line separator');
+  }
+
   test('Fix import order 1', () {
     var before = '''
 library;
@@ -26,7 +36,7 @@ import 'my_widget.dart';
 var a = 1;
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test('Fix import order 2', () {
@@ -60,7 +70,7 @@ export 'my_widget.dart' show z;
 var a = 1;
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test("Don't touch attributes with new line", () {
@@ -79,7 +89,7 @@ import 'dart:core';
 import 'my_widget.dart';
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test('Reorder attribute if no new line', () {
@@ -96,7 +106,7 @@ import 'dart:core';
 import 'my_widget.dart';
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test("Don't reorder comment if new line", () {
@@ -113,7 +123,7 @@ import 'dart:core';
 import 'my_widget.dart';
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test('Reorder comment if no new line', () {
@@ -128,7 +138,7 @@ import 'dart:core';
 import 'my_widget.dart';
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
   test('Reorder single import', () {
     var before = '''
@@ -138,7 +148,7 @@ import 'dart:core';
 import 'dart:core';
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test('Reorder single import with comment', () {
@@ -151,7 +161,7 @@ import 'dart:core';
 import 'dart:core';
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test('Reorder single import with comment and space', () {
@@ -166,7 +176,7 @@ import 'dart:core';
 import 'dart:core';
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test('Reorder parts', () {
@@ -183,13 +193,12 @@ part 'ab.dart';
 
 import 'dart:core';
 
-/* comment */
 part 'ab.dart';
 // Other comment
-part 'xz.dart';
+part 'xz.dart'; /* comment */
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
   });
 
   test('Reorder export with clauses', () {
@@ -211,6 +220,59 @@ export 'dart:async'
 export 'dart:core' show double;
 ''';
 
-    expect(sortImports(before), after);
+    checkSortImports(before, after);
+  });
+
+  test('Keep comment on the same line', () {
+    var before = '''
+import 'dart:c';
+import 'dart:a1'; // 1
+import 'dart:a2'; // 2
+import 'dart:b'; /* Some comment */
+
+var a = 1;
+''';
+    var after = '''
+import 'dart:a1'; // 1
+import 'dart:a2'; // 2
+import 'dart:b'; /* Some comment */
+import 'dart:c';
+
+var a = 1;
+''';
+
+    checkSortImports(before, after);
+  });
+
+  test('Handle imports on the same line', () {
+    var before = '''
+import 'dart:c';import 'dart:a';
+
+var a = 1;
+''';
+    var after = '''
+import 'dart:a';
+import 'dart:c';
+
+var a = 1;
+''';
+
+    checkSortImports(before, after);
+  });
+
+  test('Handle imports on the same line with inbetween comment', () {
+    var before = '''
+import 'dart:c';/* cc */import 'dart:a';
+
+var a = 1;
+''';
+    var after = '''
+/* cc */import 'dart:a';
+import 'dart:c';
+
+var a = 1;
+''';
+
+    checkSortImports(before, after);
   });
 }

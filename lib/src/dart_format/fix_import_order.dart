@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 
@@ -26,14 +27,19 @@ String _sortImports(String content, CompilationUnit unit) {
                 .precedingComments
                 ?.offset ??
             directive.beginToken.offset;
+        offset = max(lastOffset, offset);
       }
-      length = (directive.endToken.offset + directive.endToken.length) - offset;
       minOffset = offset;
     } else {
       offset = lastOffset;
-      length =
-          directive.endToken.offset + directive.endToken.length - lastOffset;
     }
+    var endOffset = directive.endToken.offset + directive.endToken.length;
+    var endOfLine = content.indexOf('\n', endOffset);
+    if (directive.endToken.next case var next?
+        when endOfLine >= 0 && endOfLine < next.offset) {
+      endOffset = endOfLine;
+    }
+    length = endOffset - offset;
 
     maxOffset = offset + length;
     lastOffset = maxOffset;
