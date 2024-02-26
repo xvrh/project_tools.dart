@@ -13,7 +13,8 @@ Iterable<ProjectFile> formatProject(DartProject project) sync* {
   }
 }
 
-final _formatter = DartFormatter(fixes: StyleFix.all);
+final _formatter =
+    DartFormatter(fixes: StyleFix.all, experimentFlags: ['inline-class']);
 
 bool formatFile(ProjectFile file) {
   final originalContent = file.file.readAsStringSync();
