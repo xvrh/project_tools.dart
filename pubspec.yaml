@@ -5,7 +5,7 @@ repository: https://github.com/xvrh/project_tools.dart
 publish_to: 'none'
 
 environment:
-  sdk: ^3.1.0
+  sdk: ^3.4.0
 
 dependencies:
   analyzer:

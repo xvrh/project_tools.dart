@@ -1,4 +1,4 @@
-import 'package:project_tools/src/format_pre_commit.dart';
+import 'package:project_tools/project_tools.dart';
 
 void main() async {
   var modifiedFiles = await formatModifiedGitFiles();
