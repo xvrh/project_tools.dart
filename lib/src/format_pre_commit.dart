@@ -8,7 +8,8 @@ import 'git_root.dart';
 
 /// Format the changed file in git.
 /// This script should be configured as a pre-commit git hook (see CONTRIBUTING.md)
-Future<List<ProjectFile>> formatModifiedGitFiles({bool Function(ProjectFile)? formatFile}) async {
+Future<List<ProjectFile>> formatModifiedGitFiles(
+    {bool Function(ProjectFile)? formatFile}) async {
   formatFile ??= standard_formatter.formatFile;
 
   var gitRoot = findGitRootOrThrow();
