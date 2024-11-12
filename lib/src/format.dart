@@ -13,19 +13,23 @@ Iterable<ProjectFile> formatProject(DartProject project) sync* {
   }
 }
 
-final _formatter =
-    DartFormatter(fixes: StyleFix.all, experimentFlags: ['inline-class']);
+final _formatter = DartFormatter(
+  fixes: StyleFix.all,
+  languageVersion: DartFormatter.latestLanguageVersion,
+);
 
-bool formatFile(ProjectFile file) {
+bool formatFile(ProjectFile file, {bool reorderImports = false}) {
   final originalContent = file.file.readAsStringSync();
   var content = originalContent;
   try {
-    if (file.normalizedRelativePath.startsWith('lib/')) {
-      content = absoluteToRelativeImports(content,
-          packageName: file.project.packageName,
-          relativePath: file.relativePath);
+    if (reorderImports) {
+      if (file.normalizedRelativePath.startsWith('lib/')) {
+        content = absoluteToRelativeImports(content,
+            packageName: file.project.packageName,
+            relativePath: file.relativePath);
+      }
+      content = sortImports(content);
     }
-    content = sortImports(content);
     content = _formatter.format(content);
 
     if (content != originalContent) {
