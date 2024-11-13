@@ -1,4 +1,5 @@
-export 'src/dart_project.dart' show DartProject, DartProjectListExtension;
+export 'src/dart_project.dart'
+    show DartProject, ProjectFile, DartProjectListExtension;
 export 'src/flutter_sdk.dart' show FlutterSdk;
 export 'src/format.dart' show formatProject, formatFile;
 export 'src/format_pre_commit.dart' show formatModifiedGitFiles;
