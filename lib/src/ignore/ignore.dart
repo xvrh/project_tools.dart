@@ -58,7 +58,7 @@
 /// ```
 ///
 /// [1]: https://git-scm.com/docs/gitignore
-library ignore;
+library;
 
 import 'dart:async';
 
