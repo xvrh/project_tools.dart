@@ -27,11 +27,7 @@ class FilePath {
   final Directory root;
   final List<String> splitRelativePath;
 
-  FilePath(
-    this.file, {
-    required this.root,
-    required this.splitRelativePath,
-  });
+  FilePath(this.file, {required this.root, required this.splitRelativePath});
 
   Directory get parent => file.parent;
 
@@ -47,24 +43,33 @@ class FilePath {
   String toString() => 'FilePath($path)';
 }
 
-Iterable<FilePath> listFiles(Directory root,
-    {EnterDirectoryPredicate? shouldEnterDirectory, Directory? gitRoot}) {
+Iterable<FilePath> listFiles(
+  Directory root, {
+  EnterDirectoryPredicate? shouldEnterDirectory,
+  Directory? gitRoot,
+}) {
   gitRoot ??= root;
 
   var gitIgnores = _upperGitIgnores(root, gitRoot);
 
-  return _Directory(root,
-          context: _ListContext(
-              gitRoot: gitRoot,
-              enterDirectoryPredicate: shouldEnterDirectory,
-              rootIgnores: gitIgnores))
-      .visit(root.listSync());
+  return _Directory(
+    root,
+    context: _ListContext(
+      gitRoot: gitRoot,
+      enterDirectoryPredicate: shouldEnterDirectory,
+      rootIgnores: gitIgnores,
+    ),
+  ).visit(root.listSync());
 }
 
-Iterable<String> listPaths(Directory root,
-    {EnterDirectoryPredicate? shouldEnterDirectory}) {
-  return listFiles(root, shouldEnterDirectory: shouldEnterDirectory)
-      .map((f) => p.relative(f.path, from: root.path));
+Iterable<String> listPaths(
+  Directory root, {
+  EnterDirectoryPredicate? shouldEnterDirectory,
+}) {
+  return listFiles(
+    root,
+    shouldEnterDirectory: shouldEnterDirectory,
+  ).map((f) => p.relative(f.path, from: root.path));
 }
 
 List<FilePath> findFilesByName(Directory root, String fileName) {
@@ -72,9 +77,10 @@ List<FilePath> findFilesByName(Directory root, String fileName) {
 }
 
 List<String> findPathsByName(Directory root, String fileName) {
-  return findFilesByName(root, fileName)
-      .map((f) => p.relative(f.path, from: root.path))
-      .toList();
+  return findFilesByName(
+    root,
+    fileName,
+  ).map((f) => p.relative(f.path, from: root.path)).toList();
 }
 
 extension IterableFileExtension on Iterable<File> {
@@ -115,10 +121,11 @@ class _Directory {
     for (var file in files) {
       if (file is File) {
         if (!_ignores(file.path)) {
-          yield FilePath(file,
-              root: root,
-              splitRelativePath:
-                  p.split(p.relative(file.path, from: rootPath)));
+          yield FilePath(
+            file,
+            root: root,
+            splitRelativePath: p.split(p.relative(file.path, from: rootPath)),
+          );
         }
       } else if (file is Directory) {
         if (!_ignores('${file.path}/')) {
@@ -127,11 +134,15 @@ class _Directory {
           var shouldEnterDirectory = true;
           if (context.enterDirectoryPredicate
               case var enterDirectoryPredicate?) {
-            shouldEnterDirectory = enterDirectoryPredicate(DirectoryContext(
-              directory: file,
-              contents: contents,
-              splitRelativePath: p.split(p.relative(file.path, from: rootPath)),
-            ));
+            shouldEnterDirectory = enterDirectoryPredicate(
+              DirectoryContext(
+                directory: file,
+                contents: contents,
+                splitRelativePath: p.split(
+                  p.relative(file.path, from: rootPath),
+                ),
+              ),
+            );
           }
           if (shouldEnterDirectory) {
             yield* subDirectory.visit(contents);
@@ -143,8 +154,9 @@ class _Directory {
 
   bool _ignores(String path) {
     var ignored = false;
-    var relativePath =
-        p.relative(path, from: directory.path).replaceAll(r'\', '/');
+    var relativePath = p
+        .relative(path, from: directory.path)
+        .replaceAll(r'\', '/');
     if (_ignore != null) {
       ignored |= _ignore!.ignores(relativePath);
     }
@@ -164,7 +176,8 @@ List<Ignore> _upperGitIgnores(Directory root, Directory gitRoot) {
 
   if (!p.isWithin(gitRoot.path, root.path)) {
     throw Exception(
-        'Git root (${gitRoot.path}) is not an ancestor of ${root.path}');
+      'Git root (${gitRoot.path}) is not an ancestor of ${root.path}',
+    );
   }
   var ignores = <Ignore>[];
   var current = root.parent;

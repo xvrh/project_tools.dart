@@ -18,16 +18,21 @@ class Changelog {
     var full = await readChangelog(upgrade);
     String? changelog;
     if (full != null) {
-      changelog =
-          extractChangelogBetweenVersions(full, upgrade.from, upgrade.to);
+      changelog = extractChangelogBetweenVersions(
+        full,
+        upgrade.from,
+        upgrade.to,
+      );
     }
 
     return Changelog(upgrade, changelog);
   }
 
   String get link {
-    var versionHash = '${upgrade.to}'
-        .replaceAll(RegExp(r'[^0-9a-z]', caseSensitive: false), '');
+    var versionHash = '${upgrade.to}'.replaceAll(
+      RegExp(r'[^0-9a-z]', caseSensitive: false),
+      '',
+    );
     return 'https://pub.dev/packages/${upgrade.package}/changelog#$versionHash';
   }
 }
@@ -37,7 +42,8 @@ Future<String?> readChangelog(PubUpgrade upgrade) async {
   var packageInfo = packageConfig[upgrade.package]!;
   var filesInPackage = Directory.fromUri(packageInfo.root).listSync();
   var changelog = filesInPackage.whereType<File>().firstWhereOrNull(
-      (e) => p.basename(e.path).toUpperCase().startsWith('CHANGELOG.'));
+    (e) => p.basename(e.path).toUpperCase().startsWith('CHANGELOG.'),
+  );
   if (changelog != null) {
     return await changelog.readAsString();
   } else {
@@ -51,7 +57,10 @@ Future<String?> readChangelog(PubUpgrade upgrade) async {
 // - Fallback to entire changelog if there are several reference to a version
 //   and the extraction is not safe.
 String extractChangelogBetweenVersions(
-    String input, Version? from, Version to) {
+  String input,
+  Version? from,
+  Version to,
+) {
   var lines = LineSplitter.split(input).toList();
 
   var startLine = 0, endLine = lines.length - 1;

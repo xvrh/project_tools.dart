@@ -20,10 +20,13 @@ String _sortImports(String content, CompilationUnit unit) {
       isFirst = false;
 
       if (_hasPrecedingNewLine(
-          content, directive.firstTokenAfterCommentAndMetadata.offset - 1)) {
+        content,
+        directive.firstTokenAfterCommentAndMetadata.offset - 1,
+      )) {
         offset = directive.firstTokenAfterCommentAndMetadata.offset;
       } else {
-        offset = (directive.metadata.beginToken ?? directive.beginToken)
+        offset =
+            (directive.metadata.beginToken ?? directive.beginToken)
                 .precedingComments
                 ?.offset ??
             directive.beginToken.offset;
@@ -45,7 +48,9 @@ String _sortImports(String content, CompilationUnit unit) {
     lastOffset = maxOffset;
 
     var wholeDirective = _Directive(
-        directive, content.substring(offset, offset + length).trim());
+      directive,
+      content.substring(offset, offset + length).trim(),
+    );
 
     if (directive is ImportDirective) {
       imports.add(wholeDirective);

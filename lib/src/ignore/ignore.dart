@@ -68,11 +68,10 @@ final _emptyLinePattern = RegExp(r'^\s*$');
 final _nonRelativePathPattern = RegExp(r'^\.*/|^\.+$');
 
 String _sanitizeRange(String range) => range.replaceAllMapped(
-      _rangePattern,
-      (m) => m.group(1)!.codeUnitAt(0) <= m.group(2)!.codeUnitAt(0)
-          ? m.group(0)!
-          : '',
-    );
+  _rangePattern,
+  (m) =>
+      m.group(1)!.codeUnitAt(0) <= m.group(2)!.codeUnitAt(0) ? m.group(0)! : '',
+);
 
 String _cleanRangeBackSlash(String slashes) =>
     slashes.substring(0, slashes.length - slashes.length % 2);
@@ -111,12 +110,16 @@ final _replacers = <_Replacer>[
   _Replacer(r'^\^*\\\*\\\*\\\/', (m) => r'^(?:.*\/)?'),
 
   // If not already starting ^, check if it contains slash
-  _Replacer(r'^(?=[^^])',
-      (m) => RegExp(r'/(?!$)').hasMatch(m.input) ? '^' : r'(?:^|\/)'),
+  _Replacer(
+    r'^(?=[^^])',
+    (m) => RegExp(r'/(?!$)').hasMatch(m.input) ? '^' : r'(?:^|\/)',
+  ),
 
   // two globstars
-  _Replacer(r'\\\/\\\*\\\*(?=\\\/|$)',
-      (m) => m.start + 6 < m.input.length ? r'(?:\/[^\/]+)*' : r'\/.+'),
+  _Replacer(
+    r'\\\/\\\*\\\*(?=\\\/|$)',
+    (m) => m.start + 6 < m.input.length ? r'(?:\/[^\/]+)*' : r'\/.+',
+  ),
 
   // intermediate wildcards
   _Replacer(r'(^|[^\\]+)\\\*(?=.+)', (m) => '${m.group(1)}[^\\/]*'),
@@ -137,12 +140,12 @@ final _replacers = <_Replacer>[
     return leadEscape == r'\'
         ? '\\[$range${_cleanRangeBackSlash(endEscape)}$close'
         : close == ']'
-            ? endEscape.length % 2 == 0
-                // A normal case, and it is a range notation
-                ? '[${_sanitizeRange(range)}$endEscape]'
-                // Invalid range notaton
-                : '[]'
-            : '[]';
+        ? endEscape.length % 2 == 0
+            // A normal case, and it is a range notation
+            ? '[${_sanitizeRange(range)}$endEscape]'
+            // Invalid range notaton
+            : '[]'
+        : '[]';
   }),
 
   // > If there is a separator at the end of the pattern then the pattern
@@ -150,17 +153,19 @@ final _replacers = <_Replacer>[
   // > files and directories.
   _Replacer(
     r'(?:[^*])$',
-    (m) => RegExp(r'/$').hasMatch(m.group(0)!)
-        ? '${m.group(0)}\$'
-        : '${m.group(0)}(?=\$|\\/\$)',
+    (m) =>
+        RegExp(r'/$').hasMatch(m.group(0)!)
+            ? '${m.group(0)}\$'
+            : '${m.group(0)}(?=\$|\\/\$)',
   ),
 
   // trailing wildcard
   _Replacer(
     r'(\^|\\\/)?\\\*$',
-    (m) => m.group(1) != null
-        ? '${m.group(1)}[^/]+(?=\$|\\/\$)'
-        : r'[^/]*(?=$|\/$)',
+    (m) =>
+        m.group(1) != null
+            ? '${m.group(1)}[^/]+(?=\$|\\/\$)'
+            : r'[^/]*(?=$|\/$)',
   ),
 ];
 
@@ -229,7 +234,7 @@ final class Ignore {
   /// [1]: https://git-scm.com/docs/gitignore
   /// [2]: https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreignoreCase
   Ignore(Iterable<String> patterns, {bool ignoreCase = false})
-      : _ignoreCase = ignoreCase {
+    : _ignoreCase = ignoreCase {
     ArgumentError.checkNotNull(patterns, 'patterns');
     ArgumentError.checkNotNull(ignoreCase, 'ignoreCase');
 
@@ -253,10 +258,9 @@ final class Ignore {
       pattern = r.apply(pattern);
     }
 
-    _rules.add(_IgnoreRule(
-      RegExp(pattern, caseSensitive: _ignoreCase),
-      negative,
-    ));
+    _rules.add(
+      _IgnoreRule(RegExp(pattern, caseSensitive: _ignoreCase), negative),
+    );
   }
 
   /// Returns `true` if [path] is ignored by the patterns used to create this
@@ -368,17 +372,16 @@ final class Ignore {
     }
     if (_nonRelativePathPattern.hasMatch(path)) {
       throw ArgumentError.value(
-          path, 'path', 'must be relative, and not start with "."');
+        path,
+        'path',
+        'must be relative, and not start with "."',
+      );
     }
 
     return _testPath(path, cache, path.split('/'));
   }
 
-  bool _testPath(
-    String path,
-    Map<String, bool> cache,
-    List<String> slices,
-  ) {
+  bool _testPath(String path, Map<String, bool> cache, List<String> slices) {
     return cache.putIfAbsent(path, () {
       slices.removeLast();
 

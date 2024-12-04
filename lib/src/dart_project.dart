@@ -33,7 +33,8 @@ class DartProject {
 
   factory DartProject(Directory directory, {Directory? gitRoot}) {
     return DartProject._(
-        _ProjectLocation(directory, gitRoot ?? directory, directory));
+      _ProjectLocation(directory, gitRoot ?? directory, directory),
+    );
   }
 
   static List<DartProject> find(Directory root, {Directory? gitRoot}) {
@@ -41,8 +42,15 @@ class DartProject {
 
     for (var file in list_files.findFilesByName(root, 'pubspec.yaml')) {
       var directory = file.parent;
-      paths.add(DartProject._(_ProjectLocation(
-          root, gitRoot ?? findGitRoot(root) ?? root, directory)));
+      paths.add(
+        DartProject._(
+          _ProjectLocation(
+            root,
+            gitRoot ?? findGitRoot(root) ?? root,
+            directory,
+          ),
+        ),
+      );
     }
 
     return paths;
@@ -78,11 +86,16 @@ class DartProject {
     gitRoot ??= _location.gitRoot;
 
     return list_files
-        .listFiles(directory, gitRoot: gitRoot, shouldEnterDirectory: (dir) {
-          var hasPubspec =
-              dir.contents.any((e) => e.path.endsWith('pubspec.yaml'));
-          return !hasPubspec;
-        })
+        .listFiles(
+          directory,
+          gitRoot: gitRoot,
+          shouldEnterDirectory: (dir) {
+            var hasPubspec = dir.contents.any(
+              (e) => e.path.endsWith('pubspec.yaml'),
+            );
+            return !hasPubspec;
+          },
+        )
         .map((f) => ProjectFile(this, f))
         .toList();
   }
@@ -114,9 +127,9 @@ class ProjectFile {
 
 extension DartProjectListExtension on List<DartProject> {
   ProjectFile? findFile(String path) {
-    var project = sortedBy<num>((e) => e.relativePath.length)
-        .reversed
-        .firstWhereOrNull((project) {
+    var project = sortedBy<num>(
+      (e) => e.relativePath.length,
+    ).reversed.firstWhereOrNull((project) {
       var pathToCompare = project.relativePath;
       if (p.isAbsolute(path)) {
         pathToCompare = project.path;
@@ -127,10 +140,13 @@ extension DartProjectListExtension on List<DartProject> {
     if (project != null) {
       var relativePath = p.relative(path, from: project.relativePath);
       var file = ProjectFile(
-          project,
-          list_files.FilePath(File(path),
-              root: project.directory,
-              splitRelativePath: p.split(relativePath)));
+        project,
+        list_files.FilePath(
+          File(path),
+          root: project.directory,
+          splitRelativePath: p.split(relativePath),
+        ),
+      );
       return file;
     }
     return null;

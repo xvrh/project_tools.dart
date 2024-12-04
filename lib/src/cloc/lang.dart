@@ -15,9 +15,10 @@ const _sqlCommentSingle = r'^\s*--';
 
 /// Static information relative to a single language.
 class Lang {
-  static final java = Lang('Java', const ['.java'], _javaCommentSingle)
-    ..withMulti(_javaCommentFrom, _javaCommentTo)
-    ..withRmInline(_javaRmInline);
+  static final java =
+      Lang('Java', const ['.java'], _javaCommentSingle)
+        ..withMulti(_javaCommentFrom, _javaCommentTo)
+        ..withRmInline(_javaRmInline);
   static final javaScript =
       Lang('JavaScript', const ['.js', '.jsx'], _javaCommentSingle)
         ..withMulti(_javaCommentFrom, _javaCommentTo)
@@ -32,14 +33,16 @@ class Lang {
     ..withMulti(_javaCommentFrom, _javaCommentTo);
   static final shell = Lang('Shell', ['.sh'], _shCommentSingle)
     ..withRmMatches(_shRmMatches);
-  static final csharp = Lang('C#', ['.cs'], _javaCommentSingle)
-    ..withMulti(_javaCommentFrom, _javaCommentTo)
-    ..withRmInline(_javaRmInline);
+  static final csharp =
+      Lang('C#', ['.cs'], _javaCommentSingle)
+        ..withMulti(_javaCommentFrom, _javaCommentTo)
+        ..withRmInline(_javaRmInline);
   static final xml = Lang.noSingle('XML', ['.xml'])
     ..withMulti(_htmlCommentFrom, _htmlCommentTo);
-  static final dart = Lang('Dart', ['.dart'], _javaCommentSingle)
-    ..withMulti(_javaCommentFrom, _javaCommentTo)
-    ..withRmInline(_javaRmInline);
+  static final dart =
+      Lang('Dart', ['.dart'], _javaCommentSingle)
+        ..withMulti(_javaCommentFrom, _javaCommentTo)
+        ..withRmInline(_javaRmInline);
 
   static final languages = [
     java,
@@ -92,10 +95,7 @@ class Lang {
     }
   }
 
-  Lang.noSingle(
-    this.name,
-    this.extensions,
-  );
+  Lang.noSingle(this.name, this.extensions);
 
   void withMulti(String cmtMultiStart, String cmtMultiEnd) {
     cmtMultiStarts.add(cmtMultiStart);

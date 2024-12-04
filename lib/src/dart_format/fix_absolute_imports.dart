@@ -4,8 +4,11 @@ import 'package:path/path.dart' as p;
 
 // Replace all absolute imports to relative one
 // import 'package:goteam/src/my_widget.dart' => 'import '../my_widget.dart';
-String absoluteToRelativeImports(String content,
-    {required String packageName, required String relativePath}) {
+String absoluteToRelativeImports(
+  String content, {
+  required String packageName,
+  required String relativePath,
+}) {
   var splitRelativePath = p.split(relativePath);
   if (splitRelativePath.firstOrNull != 'lib') {
     throw Exception('relativePath must start with lib/ got $relativePath');
@@ -22,14 +25,21 @@ String absoluteToRelativeImports(String content,
     var absolutePrefix = 'package:$packageName/';
     if (uriValue.startsWith(absolutePrefix)) {
       var absoluteImportFromLib = uriValue.substring(absolutePrefix.length);
-      var relativePath = p.posix
-          .relative(absoluteImportFromLib, from: p.dirname(thisFilePath));
+      var relativePath = p.posix.relative(
+        absoluteImportFromLib,
+        from: p.dirname(thisFilePath),
+      );
 
-      var directiveContent =
-          directive.uri.toString().replaceAll(uriValue, relativePath);
+      var directiveContent = directive.uri.toString().replaceAll(
+        uriValue,
+        relativePath,
+      );
 
-      newContent = newContent.replaceRange(directive.uri.offset,
-          directive.uri.offset + directive.uri.length, directiveContent);
+      newContent = newContent.replaceRange(
+        directive.uri.offset,
+        directive.uri.offset + directive.uri.length,
+        directiveContent,
+      );
     }
   }
 

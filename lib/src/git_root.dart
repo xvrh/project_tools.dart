@@ -4,10 +4,9 @@ import 'package:path/path.dart' as p;
 // Alternative: git rev-parse --show-toplevel
 Directory? findGitRoot(Directory directory) {
   while (true) {
-    if (directory
-        .listSync()
-        .whereType<Directory>()
-        .any((d) => p.basename(d.path) == '.git')) {
+    if (directory.listSync().whereType<Directory>().any(
+      (d) => p.basename(d.path) == '.git',
+    )) {
       return directory;
     }
 

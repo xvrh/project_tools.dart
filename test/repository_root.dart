@@ -10,10 +10,8 @@ void main() {
       d.dir('repo', [
         d.file('readme.md'),
         d.dir('.git', [d.file('config')]),
-        d.dir('project', [
-          d.file('pubspec.yaml'),
-        ]),
-      ])
+        d.dir('project', [d.file('pubspec.yaml')]),
+      ]),
     ]).create();
 
     var root =
@@ -28,10 +26,8 @@ void main() {
     await d.dir('parent', [
       d.dir('repo', [
         d.file('readme.md'),
-        d.dir('project', [
-          d.file('pubspec.yaml'),
-        ]),
-      ])
+        d.dir('project', [d.file('pubspec.yaml')]),
+      ]),
     ]).create();
 
     expect(findGitRoot(Directory('${d.sandbox}/parent/repo/project')), isNull);

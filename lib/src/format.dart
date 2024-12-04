@@ -5,7 +5,10 @@ import 'dart_project.dart';
 
 export 'dart_project.dart' show DartProject;
 
-Iterable<ProjectFile> formatProject(DartProject project, DartFormatter formatter) sync* {
+Iterable<ProjectFile> formatProject(
+  DartProject project,
+  DartFormatter formatter,
+) sync* {
   for (var file in project.dartFiles) {
     if (formatFile(file, formatter)) {
       yield file;
@@ -13,15 +16,21 @@ Iterable<ProjectFile> formatProject(DartProject project, DartFormatter formatter
   }
 }
 
-bool formatFile(ProjectFile file, DartFormatter formatter, {bool reorderImports = false }) {
+bool formatFile(
+  ProjectFile file,
+  DartFormatter formatter, {
+  bool reorderImports = false,
+}) {
   final originalContent = file.file.readAsStringSync();
   var content = originalContent;
   try {
     if (reorderImports) {
       if (file.normalizedRelativePath.startsWith('lib/')) {
-        content = absoluteToRelativeImports(content,
-            packageName: file.project.packageName,
-            relativePath: file.relativePath);
+        content = absoluteToRelativeImports(
+          content,
+          packageName: file.project.packageName,
+          relativePath: file.relativePath,
+        );
       }
       content = sortImports(content);
     }

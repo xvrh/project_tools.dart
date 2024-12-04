@@ -10,49 +10,42 @@ void main() {
       d.file('readme.md'),
       d.dir('project', [
         d.file('pubspec.yaml', 'name: project'),
-        d.dir('project3', [
-          d.file('pubspec.yaml', 'name: project3'),
-        ]),
+        d.dir('project3', [d.file('pubspec.yaml', 'name: project3')]),
       ]),
-      d.dir('project2', [
-        d.file('pubspec.yaml', 'name: project2'),
-      ]),
+      d.dir('project2', [d.file('pubspec.yaml', 'name: project2')]),
     ]).create();
 
     var files = DartProject.find(Directory(p.join(d.sandbox, 'repo')));
     expect(
-        files.map((f) => f.relativePath),
-        unorderedEquals([
-          p.join('project'),
-          p.join('project', 'project3'),
-          p.join('project2'),
-        ]));
+      files.map((f) => f.relativePath),
+      unorderedEquals([
+        p.join('project'),
+        p.join('project', 'project3'),
+        p.join('project2'),
+      ]),
+    );
     expect(
-        files.map((f) => f.path),
-        unorderedEquals([
-          p.join(d.sandbox, 'repo', 'project'),
-          p.join(d.sandbox, 'repo', 'project', 'project3'),
-          p.join(d.sandbox, 'repo', 'project2'),
-        ]));
+      files.map((f) => f.path),
+      unorderedEquals([
+        p.join(d.sandbox, 'repo', 'project'),
+        p.join(d.sandbox, 'repo', 'project', 'project3'),
+        p.join(d.sandbox, 'repo', 'project2'),
+      ]),
+    );
   });
 
   test('findDartProjects root', () async {
-    await d.dir('project', [
-      d.file('pubspec.yaml', 'name: project'),
-    ]).create();
+    await d.dir('project', [d.file('pubspec.yaml', 'name: project')]).create();
 
     var files = DartProject.find(Directory(p.join(d.sandbox, 'project')));
     expect(
-        files.map((f) => f.path),
-        unorderedEquals([
-          p.join(d.sandbox, 'project'),
-        ]));
+      files.map((f) => f.path),
+      unorderedEquals([p.join(d.sandbox, 'project')]),
+    );
   });
 
   test('new DartProject', () async {
-    await d.dir('repo', [
-      d.file('pubspec.yaml', 'name: project'),
-    ]).create();
+    await d.dir('repo', [d.file('pubspec.yaml', 'name: project')]).create();
 
     var project = DartProject(Directory(p.join(d.sandbox, 'repo')));
     expect(project.packageName, 'project');
@@ -65,23 +58,16 @@ void main() {
     await d.dir('repo', [
       d.file('pubspec.yaml', 'name: project'),
       d.file('file.txt'),
-      d.dir('project', [
-        d.file('pubspec.yaml', 'name: sub_project'),
-      ]),
-      d.dir('lib', [
-        d.file('main.dart'),
-      ]),
+      d.dir('project', [d.file('pubspec.yaml', 'name: sub_project')]),
+      d.dir('lib', [d.file('main.dart')]),
     ]).create();
 
     var project = DartProject(Directory(p.join(d.sandbox, 'repo')));
     var files = project.listFiles().map((f) => f.normalizedRelativePath);
     expect(
-        files,
-        unorderedEquals([
-          'file.txt',
-          'pubspec.yaml',
-          'lib/main.dart',
-        ]));
+      files,
+      unorderedEquals(['file.txt', 'pubspec.yaml', 'lib/main.dart']),
+    );
   });
 
   test('DartProject.listFiles take root .gitignore into account', () async {
@@ -90,24 +76,17 @@ void main() {
       d.dir('project', [
         d.file('pubspec.yaml', 'name: project'),
         d.file('file.txt'),
-        d.dir('project', [
-          d.file('pubspec.yaml', 'name: sub_project'),
-        ]),
-        d.dir('_lib', [
-          d.file('main.dart'),
-        ]),
+        d.dir('project', [d.file('pubspec.yaml', 'name: sub_project')]),
+        d.dir('_lib', [d.file('main.dart')]),
       ]),
     ]).create();
 
-    var project = DartProject(Directory(p.join(d.sandbox, 'repo', 'project')),
-        gitRoot: Directory(p.join(d.sandbox, 'repo')));
+    var project = DartProject(
+      Directory(p.join(d.sandbox, 'repo', 'project')),
+      gitRoot: Directory(p.join(d.sandbox, 'repo')),
+    );
     var files = project.listFiles().map((f) => f.normalizedRelativePath);
-    expect(
-        files,
-        unorderedEquals([
-          'file.txt',
-          'pubspec.yaml',
-        ]));
+    expect(files, unorderedEquals(['file.txt', 'pubspec.yaml']));
   });
 
   test('Find file in projects with relative', () async {

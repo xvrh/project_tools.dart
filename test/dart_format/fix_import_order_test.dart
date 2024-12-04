@@ -7,9 +7,11 @@ void main() {
 
   void checkSortImports(String before, String after) {
     expect(sortImports(before), after);
-    expect(toWindowsLineSeparator(sortImports(toWindowsLineSeparator(before))),
-        toWindowsLineSeparator(after),
-        reason: 'Windows line separator');
+    expect(
+      toWindowsLineSeparator(sortImports(toWindowsLineSeparator(before))),
+      toWindowsLineSeparator(after),
+      reason: 'Windows line separator',
+    );
   }
 
   test('Fix import order 1', () {
