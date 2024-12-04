@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:dart_style/dart_style.dart';
 import 'package:project_tools/project_tools.dart';
 
 void main() {

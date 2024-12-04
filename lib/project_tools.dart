@@ -12,3 +12,5 @@ export 'src/list_files.dart'
         findFilesByName,
         DirectoryContext,
         FilePath;
+export 'package:dart_style/dart_style.dart' show DartFormatter;
+export 'package:pub_semver/pub_semver.dart' show Version;
