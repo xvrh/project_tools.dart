@@ -3,15 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'dart_project.dart';
-import 'format.dart' as standard_formatter;
 import 'git_root.dart';
 
 /// Format the changed file in git.
 /// This script should be configured as a pre-commit git hook (see CONTRIBUTING.md)
 Future<List<ProjectFile>> formatModifiedGitFiles(
-    {bool Function(ProjectFile)? formatFile}) async {
-  formatFile ??= standard_formatter.formatFile;
-
+    {required bool Function(ProjectFile) formatFile}) async {
   var gitRoot = findGitRootOrThrow();
   var projects = DartProject.find(gitRoot);
   projects.sort((p1, p2) => p2.path.length.compareTo(p1.path.length));
