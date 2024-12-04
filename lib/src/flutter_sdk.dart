@@ -11,8 +11,10 @@ class FlutterSdk {
     if (sdk != null) {
       return sdk;
     }
-    throw StateError('Flutter SDK not found. Dart executable: '
-        '${Platform.resolvedExecutable}');
+    throw StateError(
+      'Flutter SDK not found. Dart executable: '
+      '${Platform.resolvedExecutable}',
+    );
   }
 
   static FlutterSdk? tryFind(String path) {

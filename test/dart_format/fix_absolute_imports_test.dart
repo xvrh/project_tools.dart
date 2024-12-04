@@ -25,15 +25,23 @@ var a = 1;
 ''';
 
     expect(
-        absoluteToRelativeImports(before,
-            packageName: 'my_package', relativePath: 'lib/src/ui/widget.dart'),
-        after);
+      absoluteToRelativeImports(
+        before,
+        packageName: 'my_package',
+        relativePath: 'lib/src/ui/widget.dart',
+      ),
+      after,
+    );
   });
 
   test('Only works inside lib', () {
     expect(
-        () => absoluteToRelativeImports('',
-            packageName: 'my_package', relativePath: 'src/ui/widget.dart'),
-        throwsA((e) => '$e'.contains('lib/')));
+      () => absoluteToRelativeImports(
+        '',
+        packageName: 'my_package',
+        relativePath: 'src/ui/widget.dart',
+      ),
+      throwsA((e) => '$e'.contains('lib/')),
+    );
   });
 }

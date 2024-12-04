@@ -8,21 +8,19 @@ import 'changelog.dart';
 import 'upgrade_runner.dart';
 
 class GithubDependabot {
-  final _process = ProcessRunner(
-    printOutputDefault: true,
-  );
+  final _process = ProcessRunner(printOutputDefault: true);
   final String repository;
   final Authentication githubAuthentication;
   final String branch;
 
-  GithubDependabot(
-      {String? repository,
-      Authentication? githubAuthentication,
-      String? branch})
-      : repository = repository ?? Platform.environment['GITHUB_REPOSITORY']!,
-        githubAuthentication =
-            githubAuthentication ?? findAuthenticationFromEnvironment(),
-        branch = branch ?? _autoBranchName();
+  GithubDependabot({
+    String? repository,
+    Authentication? githubAuthentication,
+    String? branch,
+  }) : repository = repository ?? Platform.environment['GITHUB_REPOSITORY']!,
+       githubAuthentication =
+           githubAuthentication ?? findAuthenticationFromEnvironment(),
+       branch = branch ?? _autoBranchName();
 
   static String _autoBranchName() {
     var now = DateTime.now();
@@ -36,12 +34,19 @@ class GithubDependabot {
   Future<void> commitAndPush(String commitMessage) async {
     await _process.runProcess(['git', 'add', '.']);
     await _process.runProcess(['git', 'commit', '-m', commitMessage]);
-    await _process
-        .runProcess(['git', 'push', '--set-upstream', 'origin', branch]);
+    await _process.runProcess([
+      'git',
+      'push',
+      '--set-upstream',
+      'origin',
+      branch,
+    ]);
   }
 
-  Future<void> openPullRequest(
-      {required String title, required String body}) async {
+  Future<void> openPullRequest({
+    required String title,
+    required String body,
+  }) async {
     // Github will not trigger workflow for user GITHUB_TOKEN.
     // We need to use a personal token.
     // https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
@@ -52,8 +57,10 @@ class GithubDependabot {
     if (body.length > maxLength) {
       body = body.substring(0, maxLength);
     }
-    await github.pullRequests.create(RepositorySlug.full(repository),
-        CreatePullRequest(title, branch, 'master', body: body));
+    await github.pullRequests.create(
+      RepositorySlug.full(repository),
+      CreatePullRequest(title, branch, 'master', body: body),
+    );
     github.client.close();
   }
 }
@@ -67,24 +74,28 @@ Future<Comment> summaryToGithubComment(
   var allUpgrades = projects.expand((p) => p.pubUpgrades);
   var breakingCount = allUpgrades.where((u) => u.isBreaking).length;
   var projectsCount = projects.where((p) => p.pubUpgrades.isNotEmpty).length;
-  var title = '$projectsCount project${projectsCount > 1 ? 's' : ''}, '
+  var title =
+      '$projectsCount project${projectsCount > 1 ? 's' : ''}, '
       '$allUpgrades upgrades '
       '($breakingCount breaking${breakingCount > 1 ? 's' : ''})';
 
   var highlightPackagesNullSafe = highlightPackages ?? [];
 
   var sortedProjects = projects.toList();
-  mergeSort<ProjectUpgrade>(sortedProjects, compare: (a, b) {
-    int weight(ProjectUpgrade p) {
-      var index = highlightPackagesNullSafe.indexOf(p.project.packageName);
-      if (index == -1) {
-        return highlightPackagesNullSafe.length;
+  mergeSort<ProjectUpgrade>(
+    sortedProjects,
+    compare: (a, b) {
+      int weight(ProjectUpgrade p) {
+        var index = highlightPackagesNullSafe.indexOf(p.project.packageName);
+        if (index == -1) {
+          return highlightPackagesNullSafe.length;
+        }
+        return index;
       }
-      return index;
-    }
 
-    return weight(a).compareTo(weight(b));
-  });
+      return weight(a).compareTo(weight(b));
+    },
+  );
 
   var body = StringBuffer();
   for (var project in sortedProjects) {
@@ -96,7 +107,8 @@ Future<Comment> summaryToGithubComment(
     if (project.pubUpgrades.isNotEmpty) {
       body.writeln('<details>');
       body.writeln(
-          '<summary>($count upgrade${count > 1 ? 's' : ''}, $breakings breaking${breakings > 1 ? 's' : ''})</summary>');
+        '<summary>($count upgrade${count > 1 ? 's' : ''}, $breakings breaking${breakings > 1 ? 's' : ''})</summary>',
+      );
       body.writeln('');
       body.writeln('''
 Package | Type | Version | Changelog${' &nbsp;' * 30}
@@ -126,18 +138,21 @@ Package | Type | Version | Changelog${' &nbsp;' * 30}
               htmlChangeLog = markdownToHtml(body);
             }
 
-            changelogColumn = '<details>'
+            changelogColumn =
+                '<details>'
                 '<summary>[Changelog](${changelog.link})</summary>'
                 '$htmlChangeLog'
                 '</details>';
 
-            changelogColumn =
-                changelogColumn.replaceAll('\n', '').replaceAll('\r', '');
+            changelogColumn = changelogColumn
+                .replaceAll('\n', '')
+                .replaceAll('\r', '');
           }
         }
 
         body.writeln(
-            '$title | $type | ${upgrade.from ?? ''} → ${upgrade.to} | $changelogColumn');
+          '$title | $type | ${upgrade.from ?? ''} → ${upgrade.to} | $changelogColumn',
+        );
       }
       body.writeln('</details>\n');
       body.writeln('');
@@ -156,10 +171,12 @@ Package | Current | Resolvable | Latest
 
         String versionOrEmpty(Version? v) => v == null ? '' : '$v';
 
-        body.writeln('$title | '
-            '${versionOrEmpty(package.current)} | '
-            '${versionOrEmpty(package.resolvable)} | '
-            '${versionOrEmpty(package.latest)}');
+        body.writeln(
+          '$title | '
+          '${versionOrEmpty(package.current)} | '
+          '${versionOrEmpty(package.resolvable)} | '
+          '${versionOrEmpty(package.latest)}',
+        );
       }
       body.writeln('</details>');
     }
