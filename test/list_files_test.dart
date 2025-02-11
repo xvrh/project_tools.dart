@@ -188,4 +188,17 @@ void main() {
         ).map((f) => f.relativePath).toList();
     expect(files, unorderedEquals([p.join('project', 'pubspec.yaml')]));
   });
+
+  test('listFiles ignores .git directory', () async {
+    await d.dir('root', [
+      d.file('outside.md'),
+      d.dir('.git', [d.file('file.dart')]),
+    ]).create();
+
+    var files =
+        listFiles(
+          Directory(p.join(d.sandbox, 'root')),
+        ).map((f) => f.relativePath).toList();
+    expect(files, unorderedEquals(['outside.md']));
+  });
 }

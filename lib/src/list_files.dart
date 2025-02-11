@@ -128,6 +128,10 @@ class _Directory {
           );
         }
       } else if (file is Directory) {
+        if (p.basename(file.path) == '.git') {
+          continue;
+        }
+
         if (!_ignores('${file.path}/')) {
           var subDirectory = _Directory(file, parent: this, context: context);
           var contents = file.listSync();
