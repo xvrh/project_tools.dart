@@ -1,29 +1,26 @@
 import 'dart:io';
-import 'package:path/path.dart' as p;
 
-// Alternative: git rev-parse --show-toplevel
+/// Returns the root [Directory] of the git repository containing [directory],
+/// or `null` if [directory] is not inside a git repository.
 Directory? findGitRoot(Directory directory) {
-  while (true) {
-    if (directory.listSync().whereType<Directory>().any(
-      (d) => p.basename(d.path) == '.git',
-    )) {
-      return directory;
-    }
-
-    var parent = directory.parent;
-    if (parent.path == directory.path) {
-      return null;
-    }
-
-    directory = parent;
-  }
+  var result = Process.runSync(
+    'git',
+    ['rev-parse', '--show-toplevel'],
+    workingDirectory: directory.path,
+  );
+  if (result.exitCode != 0) return null;
+  return Directory((result.stdout as String).trim());
 }
 
-Directory findGitRootOrThrow() {
-  var directory = Directory.current;
-  var root = findGitRoot(directory);
+/// Returns the root [Directory] of the git repository containing [directory]
+/// (defaults to [Directory.current]).
+///
+/// Throws a [StateError] if no git repository is found.
+Directory findGitRootOrThrow([Directory? directory]) {
+  var dir = directory ?? Directory.current;
+  var root = findGitRoot(dir);
   if (root == null) {
-    throw StateError('Could not find git root for ${directory.path}');
+    throw StateError('Could not find git root for ${dir.path}');
   }
   return root;
 }
