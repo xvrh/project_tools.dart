@@ -189,6 +189,29 @@ void main() {
     expect(files, unorderedEquals([p.join('project', 'pubspec.yaml')]));
   });
 
+  test('listFiles with gitRoot spelled differently from the root', () async {
+    await d.dir('parent', [
+      d.file('.gitignore', '_*'),
+      d.dir('repo', [
+        d.dir('_project', [d.file('pubspec.yaml')]),
+        d.dir('project', [d.file('pubspec.yaml')]),
+      ]),
+    ]).create();
+
+    // The directory the walk reaches, with a trailing separator — and on
+    // Windows, in the forward slashes git prints. Compared as strings this
+    // never matched, and listing never returned.
+    var gitRoot = '${p.join(d.sandbox, 'parent')}${p.separator}';
+    if (Platform.isWindows) gitRoot = gitRoot.replaceAll(r'\', '/');
+
+    var files =
+        listFiles(
+          Directory(p.join(d.sandbox, 'parent', 'repo')),
+          gitRoot: Directory(gitRoot),
+        ).map((f) => f.relativePath).toList();
+    expect(files, unorderedEquals([p.join('project', 'pubspec.yaml')]));
+  });
+
   test('listFiles ignores .git directory', () async {
     await d.dir('root', [
       d.file('outside.md'),

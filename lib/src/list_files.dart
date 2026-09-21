@@ -176,7 +176,7 @@ class _Directory {
 }
 
 List<Ignore> _upperGitIgnores(Directory root, Directory gitRoot) {
-  if (root.path == gitRoot.path) return [];
+  if (p.equals(root.path, gitRoot.path)) return [];
 
   if (!p.isWithin(gitRoot.path, root.path)) {
     throw Exception(
@@ -190,10 +190,16 @@ List<Ignore> _upperGitIgnores(Directory root, Directory gitRoot) {
     if (gitignore.existsSync()) {
       ignores.add(Ignore([gitignore.readAsStringSync()]));
     }
-    if (current.path == gitRoot.path) {
+    // `p.equals`, not `==`: one directory has more than one spelling. Git
+    // prints `C:/Users/…` on Windows where `dart:io` says `C:\Users\…`, and a
+    // trailing separator is a spelling too. Compared as strings, the walk
+    // never met the git root and sat at the filesystem root forever.
+    if (p.equals(current.path, gitRoot.path)) {
       break;
     }
-    current = current.parent;
+    var parent = current.parent;
+    if (parent.path == current.path) break;
+    current = parent;
   }
 
   return ignores;
