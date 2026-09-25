@@ -91,7 +91,7 @@ extension IterableFileExtension on Iterable<File> {
 class _ListContext {
   final EnterDirectoryPredicate? enterDirectoryPredicate;
   final Directory gitRoot;
-  final List<Ignore> rootIgnores;
+  final List<_GitIgnore> rootIgnores;
 
   _ListContext({
     required this.enterDirectoryPredicate,
@@ -100,18 +100,38 @@ class _ListContext {
   });
 }
 
+class _GitIgnore {
+  final String directory;
+  final Ignore _ignore;
+
+  _GitIgnore._(this.directory, this._ignore);
+
+  static _GitIgnore? read(Directory directory) {
+    var file = File(p.join(directory.path, '.gitignore'));
+    if (!file.existsSync()) return null;
+    return _GitIgnore._(directory.path, Ignore([file.readAsStringSync()]));
+  }
+
+  IgnoreMatch match(String path, {required bool isDirectory}) {
+    var relativePath = p.relative(path, from: directory).replaceAll(r'\', '/');
+    return _ignore.match(isDirectory ? '$relativePath/' : relativePath);
+  }
+}
+
 class _Directory {
   final _Directory? parent;
   final Directory directory;
-  Ignore? _ignore;
   final _ListContext context;
 
-  _Directory(this.directory, {this.parent, required this.context}) {
-    var gitignore = File(p.join(directory.path, '.gitignore'));
-    if (gitignore.existsSync()) {
-      _ignore = Ignore([gitignore.readAsStringSync()]);
-    }
-  }
+  /// Every .gitignore that applies to this directory's entries, outermost
+  /// first.
+  final List<_GitIgnore> _gitIgnores;
+
+  _Directory(this.directory, {this.parent, required this.context})
+    : _gitIgnores = [
+        ...parent?._gitIgnores ?? context.rootIgnores,
+        if (_GitIgnore.read(directory) case var gitIgnore?) gitIgnore,
+      ];
 
   String get rootPath => root.path;
 
@@ -120,7 +140,7 @@ class _Directory {
   Iterable<FilePath> visit(List<FileSystemEntity> files) sync* {
     for (var file in files) {
       if (file is File) {
-        if (!_ignores(file.path)) {
+        if (!_ignores(file.path, isDirectory: false)) {
           yield FilePath(
             file,
             root: root,
@@ -132,7 +152,7 @@ class _Directory {
           continue;
         }
 
-        if (!_ignores('${file.path}/')) {
+        if (!_ignores(file.path, isDirectory: true)) {
           var subDirectory = _Directory(file, parent: this, context: context);
           var contents = file.listSync();
           var shouldEnterDirectory = true;
@@ -156,26 +176,21 @@ class _Directory {
     }
   }
 
-  bool _ignores(String path) {
-    var ignored = false;
-    var relativePath = p
-        .relative(path, from: directory.path)
-        .replaceAll(r'\', '/');
-    if (_ignore != null) {
-      ignored |= _ignore!.ignores(relativePath);
+  /// As git decides: the deepest .gitignore with a rule for [path] wins, and
+  /// nothing under an ignored directory is asked about, since [visit] does not
+  /// enter one.
+  bool _ignores(String path, {required bool isDirectory}) {
+    for (var gitIgnore in _gitIgnores.reversed) {
+      var match = gitIgnore.match(path, isDirectory: isDirectory);
+      if (match != IgnoreMatch.none) return match == IgnoreMatch.ignored;
     }
-    if (parent != null) {
-      ignored |= parent!._ignores(path);
-    } else {
-      for (var rootIgnore in context.rootIgnores) {
-        ignored |= rootIgnore.ignores(relativePath);
-      }
-    }
-    return ignored;
+    return false;
   }
 }
 
-List<Ignore> _upperGitIgnores(Directory root, Directory gitRoot) {
+/// The .gitignore files between [gitRoot] and [root]'s parent, outermost
+/// first.
+List<_GitIgnore> _upperGitIgnores(Directory root, Directory gitRoot) {
   if (p.equals(root.path, gitRoot.path)) return [];
 
   if (!p.isWithin(gitRoot.path, root.path)) {
@@ -183,12 +198,11 @@ List<Ignore> _upperGitIgnores(Directory root, Directory gitRoot) {
       'Git root (${gitRoot.path}) is not an ancestor of ${root.path}',
     );
   }
-  var ignores = <Ignore>[];
+  var ignores = <_GitIgnore>[];
   var current = root.parent;
   while (true) {
-    var gitignore = File(p.join(current.path, '.gitignore'));
-    if (gitignore.existsSync()) {
-      ignores.add(Ignore([gitignore.readAsStringSync()]));
+    if (_GitIgnore.read(current) case var gitIgnore?) {
+      ignores.add(gitIgnore);
     }
     // `p.equals`, not `==`: one directory has more than one spelling. Git
     // prints `C:/Users/…` on Windows where `dart:io` says `C:\Users\…`, and a
@@ -202,5 +216,5 @@ List<Ignore> _upperGitIgnores(Directory root, Directory gitRoot) {
     current = parent;
   }
 
-  return ignores;
+  return ignores.reversed.toList();
 }

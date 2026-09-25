@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:project_tools/project_tools.dart';
@@ -212,6 +213,73 @@ void main() {
     expect(files, unorderedEquals([p.join('project', 'pubspec.yaml')]));
   });
 
+  test('anchored rules in a .gitignore above the root', () async {
+    await d.dir('repo', [
+      d.file(
+        '.gitignore',
+        '_*\n'
+            '!packages/foo/lib/src/_kept.dart\n'
+            'packages/foo/secret.txt\n',
+      ),
+      d.dir('packages', [
+        d.dir('foo', [
+          d.file('pubspec.yaml'),
+          d.file('secret.txt'),
+          d.dir('lib', [
+            d.dir('src', [
+              d.file('a.dart'),
+              d.file('_kept.dart'),
+              d.file('_scratch.dart'),
+            ]),
+          ]),
+        ]),
+      ]),
+    ]).create();
+    var repo = p.join(d.sandbox, 'repo');
+    var package = p.join(repo, 'packages', 'foo');
+    _gitInit(repo);
+
+    var files =
+        listFiles(
+          Directory(package),
+          gitRoot: Directory(repo),
+        ).map((f) => f.normalizedRelativePath).toList();
+    expect(
+      files,
+      unorderedEquals(['pubspec.yaml', 'lib/src/a.dart', 'lib/src/_kept.dart']),
+    );
+    expect(files, unorderedEquals(_gitListing(package)));
+  });
+
+  test(
+    'a deeper .gitignore re-includes what a shallower one ignores',
+    () async {
+      await d.dir('repo', [
+        d.file('.gitignore', '*.log\nbuild/\n'),
+        d.file('root.log'),
+        d.dir('sub', [
+          d.file('.gitignore', '!keep.log\n'),
+          d.file('keep.log'),
+          d.file('other.log'),
+        ]),
+        // Nothing re-includes a file whose directory is excluded.
+        d.dir('build', [d.file('.gitignore', '!*\n'), d.file('out.txt')]),
+      ]).create();
+      var repo = p.join(d.sandbox, 'repo');
+      _gitInit(repo);
+
+      var files =
+          listFiles(
+            Directory(repo),
+          ).map((f) => f.normalizedRelativePath).toList();
+      expect(
+        files,
+        unorderedEquals(['.gitignore', 'sub/.gitignore', 'sub/keep.log']),
+      );
+      expect(files, unorderedEquals(_gitListing(repo)));
+    },
+  );
+
   test('listFiles ignores .git directory', () async {
     await d.dir('root', [
       d.file('outside.md'),
@@ -224,4 +292,25 @@ void main() {
         ).map((f) => f.relativePath).toList();
     expect(files, unorderedEquals(['outside.md']));
   });
+}
+
+void _gitInit(String directory) {
+  var result = Process.runSync('git', [
+    'init',
+    '--quiet',
+  ], workingDirectory: directory);
+  expect(result.exitCode, 0, reason: '${result.stderr}');
+}
+
+/// The files git does not ignore under [directory], relative to it. Only
+/// `.gitignore` files count: the repository's info/exclude and the user's
+/// global excludes are left out, so the machine cannot change the answer.
+List<String> _gitListing(String directory) {
+  var result = Process.runSync('git', [
+    'ls-files',
+    '--others',
+    '--exclude-per-directory=.gitignore',
+  ], workingDirectory: directory);
+  expect(result.exitCode, 0, reason: '${result.stderr}');
+  return LineSplitter.split(result.stdout as String).toList();
 }
