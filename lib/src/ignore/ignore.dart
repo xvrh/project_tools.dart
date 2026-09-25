@@ -175,6 +175,18 @@ class _IgnoreRule {
   _IgnoreRule(this.pattern, this.negative);
 }
 
+/// What the rules of an [Ignore] say about one path.
+enum IgnoreMatch {
+  /// No rule matches the path.
+  none,
+
+  /// The last rule to match the path ignores it.
+  ignored,
+
+  /// The last rule to match the path is a negation (`!pattern`).
+  included,
+}
+
 /// A set of ignore rules.
 ///
 /// An [Ignore] instance holds a set of [`.gitignore` rules][1], and allows
@@ -287,6 +299,22 @@ final class Ignore {
   /// ```
   bool ignores(String path) => _ignores(path, {});
 
+  /// What the rules say about [path] itself: whether the last rule to match it
+  /// ignores it, re-includes it, or no rule matches it at all.
+  ///
+  /// Unlike [ignores], this does not look at the directories above [path].
+  /// It is for combining several `.gitignore` files, where the deepest one
+  /// with a rule for a path decides: a negation has to be told apart from no
+  /// match, and a caller walking a tree has already decided the directories
+  /// above, by not entering an ignored one.
+  ///
+  /// The [path] must be a relative path, not starting with `./`, `../`, and
+  /// must end in slash (`/`) if it is directory.
+  IgnoreMatch match(String path) {
+    _checkPath(path);
+    return _testPathSlice(path);
+  }
+
   /// Removes entries from [paths] that are ignored the patterns used to create
   /// this [Ignore] instance.
   ///
@@ -366,6 +394,11 @@ final class Ignore {
   }
 
   bool _ignores(String path, Map<String, bool> cache) {
+    _checkPath(path);
+    return _testPath(path, cache, path.split('/'));
+  }
+
+  void _checkPath(String path) {
     ArgumentError.checkNotNull(path, 'path');
     if (path.isEmpty) {
       throw ArgumentError.value(path, 'path', 'must be not empty');
@@ -377,8 +410,6 @@ final class Ignore {
         'must be relative, and not start with "."',
       );
     }
-
-    return _testPath(path, cache, path.split('/'));
   }
 
   bool _testPath(String path, Map<String, bool> cache, List<String> slices) {
@@ -386,30 +417,20 @@ final class Ignore {
       slices.removeLast();
 
       if (slices.isEmpty) {
-        return _testPathSlice(path);
+        return _testPathSlice(path) == IgnoreMatch.ignored;
       }
 
       final parent = _testPath('${slices.join('/')}/', cache, slices);
-      return parent || _testPathSlice(path);
+      return parent || _testPathSlice(path) == IgnoreMatch.ignored;
     });
   }
 
-  bool _testPathSlice(String path) {
-    var ignored = false;
-    var unignored = false;
-
-    for (final r in _rules) {
-      if (unignored == r.negative && ignored != unignored ||
-          r.negative && !ignored && !unignored) {
-        continue;
-      }
-
+  IgnoreMatch _testPathSlice(String path) {
+    for (final r in _rules.reversed) {
       if (r.pattern.hasMatch(path)) {
-        ignored = !r.negative;
-        unignored = r.negative;
+        return r.negative ? IgnoreMatch.included : IgnoreMatch.ignored;
       }
     }
-
-    return ignored;
+    return IgnoreMatch.none;
   }
 }

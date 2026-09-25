@@ -62,6 +62,20 @@ void main() {
     expect(ig.ignores('subfolder/.dart_tool/myfile.dart'), isFalse);
   });
 
+  test('match tells a negation apart from no rule', () {
+    final ig = Ignore(['*.log', '!keep.log', '!never-ignored.txt', 'build/']);
+
+    expect(ig.match('a.log'), IgnoreMatch.ignored);
+    expect(ig.match('keep.log'), IgnoreMatch.included);
+    expect(ig.match('never-ignored.txt'), IgnoreMatch.included);
+    expect(ig.match('a.dart'), IgnoreMatch.none);
+    expect(ig.match('build/'), IgnoreMatch.ignored);
+
+    // Unlike ignores, match does not look at the directories above the path.
+    expect(ig.match('build/out.txt'), IgnoreMatch.none);
+    expect(ig.ignores('build/out.txt'), isTrue);
+  });
+
   for (final c in _cases) {
     final patterns = c[1] as List<String>;
     final paths = c[2] as Map<String, bool>;
